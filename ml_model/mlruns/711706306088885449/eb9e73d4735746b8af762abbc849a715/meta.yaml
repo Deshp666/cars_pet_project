@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/711706306088885449/eb9e73d4735746b8af762abbc849a715/artifacts
+end_time: 1764094136714
+entry_point_name: ''
+experiment_id: '711706306088885449'
+lifecycle_stage: active
+run_id: eb9e73d4735746b8af762abbc849a715
+run_name: regressor
+run_uuid: eb9e73d4735746b8af762abbc849a715
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1764094122045
+status: 3
+tags: []
+user_id: motve

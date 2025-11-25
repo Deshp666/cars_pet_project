@@ -1,0 +1,32 @@
+artifact_path: model
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.9.13
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.3.2
+mlflow_version: 2.11.3
+model_size_bytes: 46333859
+model_uuid: 53628d37eeab4cd0934f8b2f0fa92b41
+run_id: a8d6b161dc434a0b80adef1fa2a7c995
+signature:
+  inputs: '[{"type": "string", "name": "name", "required": true}, {"type": "double",
+    "name": "year", "required": true}, {"type": "double", "name": "km_driven", "required":
+    true}, {"type": "string", "name": "fuel", "required": true}, {"type": "string",
+    "name": "seller_type", "required": true}, {"type": "string", "name": "transmission",
+    "required": true}, {"type": "string", "name": "owner", "required": true}, {"type":
+    "string", "name": "mileage", "required": false}, {"type": "string", "name": "engine",
+    "required": false}, {"type": "string", "name": "max_power", "required": false},
+    {"type": "string", "name": "torque", "required": false}, {"type": "double", "name":
+    "seats", "required": false}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "float64", "shape": [-1]}}]'
+  params: null
+utc_time_created: '2025-11-25 18:14:57.060866'
