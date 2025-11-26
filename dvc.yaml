@@ -1,0 +1,9 @@
+stages:
+  train:
+    cmd: python -m ml_model.train --data-path data/cars.csv --model-path models/model.pkl --transformer-path models/power_trans.pkl
+    deps:
+      - data/cars.csv
+      - ml_model/train.py
+      - ml_model/custom_transformers.py
+      - ml_model/data_prep.py
+      - requirements_train.txt

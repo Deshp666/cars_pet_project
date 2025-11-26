@@ -1,0 +1,35 @@
+schema: '2.0'
+stages:
+  train:
+    cmd: python -m ml_model.train --data-path data/cars.csv --model-path 
+      models/model.pkl --transformer-path models/power_trans.pkl
+    deps:
+    - path: data/cars.csv
+      hash: md5
+      md5: 1ed7c0307a2ed326b234f6ec216c64e8
+      size: 1045249
+    - path: ml_model/custom_transformers.py
+      hash: md5
+      md5: 45cb1f3e13f356faf95a125b5436996e
+      size: 3498
+    - path: ml_model/data_prep.py
+      hash: md5
+      md5: b54e3fe6c8f1a029f351e86f3c7a9b1e
+      size: 1001
+    - path: ml_model/train.py
+      hash: md5
+      md5: 4737f32c92dd48335914c34c8ff91d48
+      size: 4449
+    - path: requirements_train.txt
+      hash: md5
+      md5: 7c55e95c9a294037a10782e557da10f7
+      size: 82
+    outs:
+    - path: models/model.pkl
+      hash: md5
+      md5: 4d024f4f7fda08a9e505e45ce289d2e2
+      size: 46366330
+    - path: models/power_trans.pkl
+      hash: md5
+      md5: cd01d12dbae61c55eab7b374518408db
+      size: 662

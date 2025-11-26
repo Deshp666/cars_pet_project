@@ -1,7 +1,10 @@
+import argparse
+import os
 import pandas as pd
 import numpy as np
 import pickle
 import mlflow
+from mlflow.models import infer_signature
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import StackingRegressor, RandomForestRegressor, GradientBoostingRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
@@ -10,60 +13,32 @@ from sklearn.svm import SVR
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.pipeline import Pipeline
-from mlflow.models import infer_signature
 from ml_model.data_prep import get_features_and_target, get_preprocessor
 from ml_model.custom_transformers import FeatureEngineerAndCleaner
-import os
 
-mlflow.set_tracking_uri("http://127.0.0.1:5000")
-mlflow.set_experiment("Car_Price_Prediction_Pipeline")
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ARTIFACTS_DIR = os.path.join(PROJECT_ROOT, 'artifacts')
-os.makedirs(ARTIFACTS_DIR, exist_ok=True)
-
-MODEL_PATH = os.path.join(ARTIFACTS_DIR, 'model.pkl')
-TRANSFORMER_PATH = os.path.join(ARTIFACTS_DIR, 'power_trans.pkl')
 
 def eval_metrics(actual, pred):
-    """
-    Рассчитывает метрики регрессии.
-    """
     rmse = np.sqrt(mean_squared_error(actual, pred))
     mae = mean_absolute_error(actual, pred)
     r2 = r2_score(actual, pred)
     return rmse, mae, r2
 
 
-def load_and_prepare_data():
-    """
-    Загружает сырые данные, выполняет масштабирование Y и разбивает на выборки.
-    Возвращает данные для обучения и трансформер Y.
-    """
+def load_and_prepare_data(data_path):
     print('load_and_prepare_data begin')
-    try:
-        df = pd.read_csv('https://raw.githubusercontent.com/Deshp666/cars_dataset/refs/heads/main/cars.csv', delimiter = ',')
-        print('file dowloaded')
-    except FileNotFoundError:
-        print("Ошибка: Файл не найден.")
-        raise
+    df = pd.read_csv(data_path)
+    print('file loaded')
 
     df = df.dropna(subset=['selling_price', 'year'])
-
     X, Y_scale, power_trans = get_features_and_target(df)
 
     X_train, X_val, y_train, y_val = train_test_split(
         X, Y_scale, test_size=0.2, random_state=42
     )
-
     return X_train, X_val, y_train, y_val, power_trans
 
 
 def train_model(X_train, y_train):
-    """
-    Создает полный ML Pipeline, выполняет GridSearchCV и обучает модель.
-    Возвращает лучший обученный Pipeline.
-    """
-
     estimators = [
         ('dt', DecisionTreeRegressor(random_state=42)),
         ('rf', RandomForestRegressor(random_state=42)),
@@ -80,7 +55,7 @@ def train_model(X_train, y_train):
 
     full_pipeline = Pipeline(steps=[
         ('feature_engineer', FeatureEngineerAndCleaner(use_statistic_method=True)),
-        ('preprocessor_scaler', get_preprocessor()),  # ColumnTransformer со StandardScaler
+        ('preprocessor_scaler', get_preprocessor()),
         ('regressor', stacking_regressor)
     ])
 
@@ -90,26 +65,29 @@ def train_model(X_train, y_train):
     }
 
     clf = GridSearchCV(full_pipeline, params, cv=3, n_jobs=-1, verbose=1)
-
     print("Начало обучения и подбора гиперпараметров...")
-    clf.fit(X_train, y_train.reshape(-1))
+    clf.fit(X_train, y_train.ravel())  # .ravel() вместо reshape
 
     best_model = clf.best_estimator_
     print("Обучение завершено. Лучшие параметры:", clf.best_params_)
-
     return best_model, clf.best_params_, clf.best_score_
 
 
-def evaluate_and_save_artifacts(best_model, X_val, y_val, power_trans, best_params, best_score):
-    """
-    Оценивает модель, логирует метрики в MLflow и сохраняет .pkl файлы.
-    """
+# def save_artifacts(best_model, power_trans, model_path, transformer_path):
+#     os.makedirs(os.path.dirname(model_path), exist_ok=True)
+#     with open(model_path, 'wb') as f:
+#         pickle.dump(best_model, f)
+#     with open(transformer_path, 'wb') as f:
+#         pickle.dump(power_trans, f)
+#     print(f"Модель сохранена: {model_path}")
+#     print(f"Трансформер сохранён: {transformer_path}")
+
+
+def evaluate_model(best_model, X_val, y_val, power_trans):
     y_pred = best_model.predict(X_val)
-
-    y_val_real = power_trans.inverse_transform(y_val)
+    y_val_real = power_trans.inverse_transform(y_val.reshape(-1, 1))
     y_pred_real = power_trans.inverse_transform(y_pred.reshape(-1, 1))
-
-    (rmse, mae, r2) = eval_metrics(y_val_real, y_pred_real)
+    rmse, mae, r2 = eval_metrics(y_val_real, y_pred_real)
 
     print("-" * 30)
     print(f"Metrics on Validation Set:")
@@ -118,35 +96,46 @@ def evaluate_and_save_artifacts(best_model, X_val, y_val, power_trans, best_para
     print(f"  R2: {r2:.4f}")
     print("-" * 30)
 
-    with mlflow.start_run(run_name=best_model.steps[-1][0]):
-        mlflow.log_metric("rmse", rmse)
-        mlflow.log_metric("r2", r2)
-        mlflow.log_metric("mae", mae)
-        mlflow.log_param("best_cv_score", best_score)
 
-        for param_name, param_value in best_params.items():
-            mlflow.log_param(param_name, param_value)
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data-path", type=str, required=True)
+    parser.add_argument("--mlflow-tracking-uri", type=str, default="http://127.0.0.1:5000")
+    parser.add_argument("--mlflow-experiment", type=str, default="Car_Price_Prediction_DVC")
+    args = parser.parse_args()
 
-        predictions = best_model.predict(X_val)
-        signature = infer_signature(X_val, predictions)
-        mlflow.sklearn.log_model(best_model, "model", signature=signature)
+    mlflow.set_tracking_uri(args.mlflow_tracking_uri)
+    mlflow.set_experiment(args.mlflow_experiment)
 
-    with open(MODEL_PATH, 'wb') as file:
-        pickle.dump(best_model, file)
-    print(f"Модель ({MODEL_PATH}) сохранена.")
+    X_train, X_val, y_train, y_val, power_trans = load_and_prepare_data(args.data_path)
+    best_model, best_params, best_score = train_model(X_train, y_train)
+    evaluate_model(best_model, X_val, y_val, power_trans)
 
-    with open(TRANSFORMER_PATH, 'wb') as file:
-        pickle.dump(power_trans, file)
-    print(f"Трансформер ({TRANSFORMER_PATH}) сохранен.")
+    y_pred = best_model.predict(X_val)
+    y_val_real = power_trans.inverse_transform(y_val.reshape(-1, 1)).flatten()
+    y_pred_real = power_trans.inverse_transform(y_pred.reshape(-1, 1)).flatten()
+    rmse, mae, r2 = eval_metrics(y_val_real, y_pred_real)
+
+    with mlflow.start_run() as run:
+        mlflow.log_metrics({"rmse": rmse, "mae": mae, "r2": r2, "best_cv_score": best_score})
+        mlflow.log_params(best_params)
+
+        signature = infer_signature(X_val, y_pred)
+        mlflow.sklearn.log_model(
+            sk_model=best_model,
+            artifact_path="model",
+            signature=signature,
+            registered_model_name="CarPriceRegressor"
+        )
+
+        transformer_path = "power_trans.pkl"
+        with open(transformer_path, "wb") as f:
+            pickle.dump(power_trans, f)
+        mlflow.log_artifact(transformer_path, artifact_path="transformers")
+
+    print(f"✅ Модель зарегистрирована в MLflow как 'CarPriceRegressor'")
+    print(f"✅ Run ID: {run.info.run_id}")
 
 
 if __name__ == '__main__':
-    print('init...')
-    X_train, X_val, y_train, y_val, power_trans = load_and_prepare_data()
-    print('load_and_prepare_data is done')
-
-    best_model, best_params, best_score = train_model(X_train, y_train)
-    print('train_model is done')
-
-    evaluate_and_save_artifacts(best_model, X_val, y_val, power_trans, best_params, best_score)
-    print('evaluate_and_save_artifacts is done')
+    main()
