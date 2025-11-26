@@ -11,12 +11,18 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.pipeline import Pipeline
 from mlflow.models import infer_signature
-from data_prep import get_features_and_target, get_preprocessor
-from custom_transformers import FeatureEngineerAndCleaner
+from ml_model.data_prep import get_features_and_target, get_preprocessor
+from ml_model.custom_transformers import FeatureEngineerAndCleaner
+import os
 
 mlflow.set_tracking_uri("http://127.0.0.1:5000")
 mlflow.set_experiment("Car_Price_Prediction_Pipeline")
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ARTIFACTS_DIR = os.path.join(PROJECT_ROOT, 'artifacts')
+os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 
+MODEL_PATH = os.path.join(ARTIFACTS_DIR, 'model.pkl')
+TRANSFORMER_PATH = os.path.join(ARTIFACTS_DIR, 'power_trans.pkl')
 
 def eval_metrics(actual, pred):
     """
@@ -28,14 +34,15 @@ def eval_metrics(actual, pred):
     return rmse, mae, r2
 
 
-# --- 1. Функция загрузки и подготовки данных ---
 def load_and_prepare_data():
     """
     Загружает сырые данные, выполняет масштабирование Y и разбивает на выборки.
     Возвращает данные для обучения и трансформер Y.
     """
+    print('load_and_prepare_data begin')
     try:
         df = pd.read_csv('https://raw.githubusercontent.com/Deshp666/cars_dataset/refs/heads/main/cars.csv', delimiter = ',')
+        print('file dowloaded')
     except FileNotFoundError:
         print("Ошибка: Файл не найден.")
         raise
@@ -124,13 +131,13 @@ def evaluate_and_save_artifacts(best_model, X_val, y_val, power_trans, best_para
         signature = infer_signature(X_val, predictions)
         mlflow.sklearn.log_model(best_model, "model", signature=signature)
 
-    with open('model.pkl', 'wb') as file:
+    with open(MODEL_PATH, 'wb') as file:
         pickle.dump(best_model, file)
-    print("Модель (model.pkl) сохранена.")
+    print(f"Модель ({MODEL_PATH}) сохранена.")
 
-    with open('power_trans.pkl', 'wb') as file:
+    with open(TRANSFORMER_PATH, 'wb') as file:
         pickle.dump(power_trans, file)
-    print("Трансформер (power_trans.pkl) сохранен.")
+    print(f"Трансформер ({TRANSFORMER_PATH}) сохранен.")
 
 
 if __name__ == '__main__':

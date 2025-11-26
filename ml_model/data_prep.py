@@ -3,8 +3,7 @@ from sklearn.compose import ColumnTransformer
 
 def get_preprocessor():
     numeric_features = ['year', 'mileage', 'engine', 'max_power', 'km_driven',
-                        'distance_by_year', 'age', 'name', 'fuel', 'transmission',
-                        'owner', 'seller_type']
+                        'distance_by_year', 'age']
 
     preprocessor = ColumnTransformer(
         transformers=[
