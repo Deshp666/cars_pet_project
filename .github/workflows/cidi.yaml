@@ -4,9 +4,6 @@ on:
   push:
     branches: [ main ]
 
-env:
-  IMAGE_NAME: ghcr.io/${{ github.actor }}/car-price-api
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,11 +12,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
+        env:
+          OWNER: '${{ github.repository_owner }}'
+
       - name: Print GitHub context
         run: |
             echo "Repository owner: ${{ github.repository_owner }}"
             echo "Actor: ${{ github.actor }}"
             echo "Repository: ${{ github.repository }}"
+            echo "Owner LC: ${{ env.OWNER_LC }}"
 
       - name: Build MLflow image
         run: |
@@ -80,4 +84,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}, ${{ env.IMAGE_NAME }}:latest
+          tags: ghcr.io/${{ env.OWNER_LC }}/car-price-api:${{ github.sha }}, ghcr.io/${{ env.OWNER_LC }}/car-price-api:latest
