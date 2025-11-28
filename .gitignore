@@ -44,7 +44,6 @@ power_trans.pkl
 
 .dvc\config
 .dvc/config
-infra/minio/minio_data
 .dvc/config.local
 .dvc/tmp
 .dvc/cache
