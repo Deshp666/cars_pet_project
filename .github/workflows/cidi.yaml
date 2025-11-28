@@ -22,7 +22,7 @@ jobs:
 
       - name: Start MinIO
         run: |
-          docker-compose -f infra/minio/docker-compose.yml up -d
+          docker compose -f infra/minio/docker-compose.yml up -d
           sleep 10
 
       - name: Install DVC
