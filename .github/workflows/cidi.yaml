@@ -30,7 +30,6 @@ jobs:
           dvc remote modify myremote endpointurl http://localhost:9000
           dvc remote modify myremote access_key_id minioadmin
           dvc remote modify myremote secret_access_key minioadmin
-          dvc remote modify myremote ssl false
 
       - name: Set up Python
         uses: actions/setup-python@v4
