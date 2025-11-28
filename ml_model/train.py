@@ -1,5 +1,6 @@
 import argparse
 import os
+import socket
 import pandas as pd
 import numpy as np
 import pickle
@@ -105,14 +106,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-path", type=str, required=True)
     parser.add_argument("--skip-mlflow", action="store_true", help="Skip MLflow logging")
-    parser.add_argument("--mlflow-tracking-uri", type=str, default="http://127.0.0.1:5000")
     parser.add_argument("--mlflow-experiment", type=str, default="Car_Price_Prediction_DVC")
 
     args = parser.parse_args()
+    if os.getenv("GITHUB_ACTIONS"):
+        mlflow_uri = "http://host.docker.internal:5000"
+    else:
+        mlflow_uri = "http://127.0.0.1:5000"
 
     if not args.skip_mlflow:
         try:
-            mlflow.set_tracking_uri(args.mlflow_tracking_uri)
+            mlflow.set_tracking_uri(mlflow_uri)
             mlflow.set_experiment(args.mlflow_experiment)
 
         except Exception as e:

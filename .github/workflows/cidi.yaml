@@ -16,15 +16,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build MLflow image
-        run: |
-          docker build -t car-price-mlflow -f mlflow-server.Dockerfile .
-
+      # === Запуск MinIO (для DVC) ===
       - name: Start MinIO
         run: |
           docker compose -f infra/minio/docker-compose.yml up -d
           sleep 10
 
+      # === Настраиваем DVC ===
       - name: Install DVC
         run: pip install dvc[s3]
 
@@ -34,6 +32,7 @@ jobs:
           dvc remote modify myremote endpointurl http://localhost:9000
           dvc remote modify myremote access_key_id minioadmin
           dvc remote modify myremote secret_access_key minioadmin
+          dvc remote modify myremote ssl false
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -43,10 +42,28 @@ jobs:
       - name: Install training dependencies
         run: pip install -r requirements_train.txt
 
-      - name: Start temporary MLflow
+      - name: Build MLflow image
+        run: |
+          cat > mlflow-server.Dockerfile <<EOF
+FROM python:3.10-slim
+RUN pip install mlflow==2.11.3
+RUN mkdir -p /tmp/mlflow
+EXPOSE 5000
+CMD ["mlflow", "server", \
+     "--host", "0.0.0.0", \
+     "--port", "5000", \
+     "--backend-store-uri", "sqlite:////tmp/mlflow/mlflow.db", \
+     "--default-artifact-root", "/tmp/mlflow", \
+     "--serve-artifacts"]
+EOF
+          docker build -t car-price-mlflow -f mlflow-server.Dockerfile .
+
+      - name: Start MLflow server
         run: |
           docker run -d --name mlflow-temp -p 5000:5000 car-price-mlflow
-          sleep 10
+          sleep 15
+          # Ждём, пока MLflow запустится
+          timeout 60 bash -c 'until curl -f http://localhost:5000/; do sleep 2; done' || exit 1
 
       - name: Pull data and train model
         run: |
