@@ -152,8 +152,8 @@ def main():
                 registered_model_name="CarPriceRegressor"
             )
 
-    print(f"✅ Модель зарегистрирована в MLflow как 'CarPriceRegressor'")
-    print(f"✅ Run ID: {run.info.run_id}")
+            print(f"✅ Модель зарегистрирована в MLflow как 'CarPriceRegressor'")
+            print(f"✅ Run ID: {run.info.run_id}")
 
 
 if __name__ == '__main__':

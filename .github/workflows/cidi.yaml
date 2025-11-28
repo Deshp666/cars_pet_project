@@ -16,13 +16,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # === Запуск MinIO (для DVC) ===
+      - name: Build MLflow image
+        run: |
+          docker build -t car-price-mlflow -f mlflow-server.Dockerfile .
+
       - name: Start MinIO
         run: |
           docker compose -f infra/minio/docker-compose.yml up -d
           sleep 10
 
-      # === Настраиваем DVC ===
       - name: Install DVC
         run: pip install dvc[s3]
 
@@ -33,7 +35,6 @@ jobs:
           dvc remote modify myremote access_key_id minioadmin
           dvc remote modify myremote secret_access_key minioadmin
 
-      # === Установка Python и зависимостей обучения ===
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -42,28 +43,21 @@ jobs:
       - name: Install training dependencies
         run: pip install -r requirements_train.txt
 
-      # === Запуск MLflow в Docker ===
-      - name: Start MLflow server
+      - name: Start temporary MLflow
         run: |
-          docker build -t car-price-mlflow -f mlflow-server.Dockerfile .
           docker run -d --name mlflow-temp -p 5000:5000 car-price-mlflow
-          
-          # Ждём, пока MLflow запустится (проверяем логи)
-          timeout 60 bash -c 'until docker logs mlflow-temp 2>&1 | grep -q "Listening at:"; do sleep 2; done' || exit 1
+          sleep 10
 
-      # === Обучение модели ===
       - name: Pull data and train model
         run: |
           dvc pull
           python -m ml_model.train --data-path data/cars.csv
 
-      # === Остановка MLflow ===
       - name: Stop MLflow
         run: |
           docker stop mlflow-temp || true
           docker rm mlflow-temp || true
 
-      # === Сборка и пуш Docker-образа API ===
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
