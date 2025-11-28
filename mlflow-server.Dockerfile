@@ -2,7 +2,7 @@ FROM python:3.10-slim
 
 RUN pip install mlflow==2.11.3
 
-RUN mkdir -p /tmp/mlflow
+RUN mkdir -p /mlflow && chmod -R 777 /mlflow
 
 EXPOSE 5000
 
