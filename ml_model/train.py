@@ -148,11 +148,6 @@ def main():
                 registered_model_name="CarPriceRegressor"
             )
 
-            transformer_path = "power_trans.pkl"
-            with open(transformer_path, "wb") as f:
-                pickle.dump(power_trans, f)
-            mlflow.log_artifact(transformer_path, artifact_path="transformers")
-
     print(f"✅ Модель зарегистрирована в MLflow как 'CarPriceRegressor'")
     print(f"✅ Run ID: {run.info.run_id}")
 
