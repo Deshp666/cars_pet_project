@@ -54,8 +54,20 @@ jobs:
 
       - name: Start temporary MLflow
         run: |
-          docker run -d --name mlflow-temp --network host car-price-mlflow
-          sleep 10
+          mkdir -p ${{ github.workspace }}/mlflow_data
+          chmod 777 ${{ github.workspace }}/mlflow_data
+          docker run -d --name mlflow-temp --network host \
+            -v ${{ github.workspace }}/mlflow_data:/mlflow \
+            car-price-mlflow
+          echo "Waiting for MLflow to start..."
+          for i in {1..30}; do
+            if curl -f http://localhost:5000/health 2>/dev/null; then
+              echo "MLflow is ready!"
+              break
+            fi
+            sleep 2
+          done
+          docker logs mlflow-temp
 
       - name: Pull data and train model
         env:
