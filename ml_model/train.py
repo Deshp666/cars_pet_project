@@ -15,6 +15,10 @@ from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.pipeline import Pipeline
 from ml_model.data_prep import get_features_and_target, get_preprocessor
 from ml_model.custom_transformers import FeatureEngineerAndCleaner
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 
 def eval_metrics(actual, pred):
@@ -60,8 +64,8 @@ def train_model(X_train, y_train):
     ])
 
     params = {
-        'regressor__dt__max_depth': [5, 10],
-        'regressor__rf__n_estimators': [50, 100],
+        'regressor__dt__max_depth': [5],
+        #'regressor__rf__n_estimators': [50, 100],
     }
 
     clf = GridSearchCV(full_pipeline, params, cv=3, n_jobs=-1, verbose=1)
@@ -116,9 +120,16 @@ def main():
     y_pred_real = power_trans.inverse_transform(y_pred.reshape(-1, 1)).flatten()
     rmse, mae, r2 = eval_metrics(y_val_real, y_pred_real)
 
+    os.makedirs("artifacts", exist_ok=True)
+    with open("artifacts/model.pkl", "wb") as f:
+        pickle.dump(best_model, f)
+    with open("artifacts/power_trans.pkl", "wb") as f:
+        pickle.dump(power_trans, f)
+
     with mlflow.start_run() as run:
         mlflow.log_metrics({"rmse": rmse, "mae": mae, "r2": r2, "best_cv_score": best_score})
         mlflow.log_params(best_params)
+        mlflow.sklearn.log_model(best_model, "model")
 
         signature = infer_signature(X_val, y_pred)
         mlflow.sklearn.log_model(

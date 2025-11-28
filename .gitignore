@@ -38,13 +38,23 @@ power_trans.pkl
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+
+
+
+
 .dvc\config
 .dvc/config
+infra/minio/minio_data
+.dvc/config.local
+.dvc/tmp
+.dvc/cache
+
+
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
 models/
-artifacts/
 # Unit test / coverage reports
 htmlcov/
 .tox/
@@ -188,3 +198,4 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+.dvc/config
