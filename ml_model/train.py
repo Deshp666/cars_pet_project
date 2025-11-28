@@ -104,12 +104,20 @@ def evaluate_model(best_model, X_val, y_val, power_trans):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-path", type=str, required=True)
+    parser.add_argument("--skip-mlflow", action="store_true", help="Skip MLflow logging")
     parser.add_argument("--mlflow-tracking-uri", type=str, default="http://127.0.0.1:5000")
     parser.add_argument("--mlflow-experiment", type=str, default="Car_Price_Prediction_DVC")
+
     args = parser.parse_args()
 
-    mlflow.set_tracking_uri(args.mlflow_tracking_uri)
-    mlflow.set_experiment(args.mlflow_experiment)
+    if not args.skip_mlflow:
+        try:
+            mlflow.set_tracking_uri(args.mlflow_tracking_uri)
+            mlflow.set_experiment(args.mlflow_experiment)
+
+        except Exception as e:
+            print(f"⚠️ MLflow недоступен: {e}. Пропускаем логирование.")
+            args.skip_mlflow = True
 
     X_train, X_val, y_train, y_val, power_trans = load_and_prepare_data(args.data_path)
     best_model, best_params, best_score = train_model(X_train, y_train)
@@ -126,23 +134,24 @@ def main():
     with open("artifacts/power_trans.pkl", "wb") as f:
         pickle.dump(power_trans, f)
 
-    with mlflow.start_run() as run:
-        mlflow.log_metrics({"rmse": rmse, "mae": mae, "r2": r2, "best_cv_score": best_score})
-        mlflow.log_params(best_params)
-        mlflow.sklearn.log_model(best_model, "model")
+    if not args.skip_mlflow:
+        with mlflow.start_run() as run:
+            mlflow.log_metrics({"rmse": rmse, "mae": mae, "r2": r2, "best_cv_score": best_score})
+            mlflow.log_params(best_params)
+            mlflow.sklearn.log_model(best_model, "model")
 
-        signature = infer_signature(X_val, y_pred)
-        mlflow.sklearn.log_model(
-            sk_model=best_model,
-            artifact_path="model",
-            signature=signature,
-            registered_model_name="CarPriceRegressor"
-        )
+            signature = infer_signature(X_val, y_pred)
+            mlflow.sklearn.log_model(
+                sk_model=best_model,
+                artifact_path="model",
+                signature=signature,
+                registered_model_name="CarPriceRegressor"
+            )
 
-        transformer_path = "power_trans.pkl"
-        with open(transformer_path, "wb") as f:
-            pickle.dump(power_trans, f)
-        mlflow.log_artifact(transformer_path, artifact_path="transformers")
+            transformer_path = "power_trans.pkl"
+            with open(transformer_path, "wb") as f:
+                pickle.dump(power_trans, f)
+            mlflow.log_artifact(transformer_path, artifact_path="transformers")
 
     print(f"✅ Модель зарегистрирована в MLflow как 'CarPriceRegressor'")
     print(f"✅ Run ID: {run.info.run_id}")

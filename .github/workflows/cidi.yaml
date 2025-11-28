@@ -1,0 +1,77 @@
+name: Build Car Price API with Trained Model
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/car-price-api
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build MLflow image
+        run: |
+          docker build -t car-price-mlflow -f mlflow-server.Dockerfile .
+
+      - name: Start MinIO
+        run: |
+          docker-compose -f infra/minio/docker-compose.yml up -d
+          sleep 10
+
+      - name: Install DVC
+        run: pip install dvc[s3]
+
+      - name: Configure DVC remote
+        run: |
+          dvc remote add -d myremote s3://car-price-data
+          dvc remote modify myremote endpointurl http://localhost:9000
+          dvc remote modify myremote access_key_id minioadmin
+          dvc remote modify myremote secret_access_key minioadmin
+          dvc remote modify myremote ssl false
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install training dependencies
+        run: pip install -r requirements_train.txt
+
+      - name: Start temporary MLflow
+        run: |
+          docker run -d --name mlflow-temp -p 5000:5000 car-price-mlflow
+          sleep 10
+
+      - name: Pull data and train model
+        run: |
+          dvc pull
+          python -m ml_model.train --data-path data/cars.csv
+
+      - name: Stop MLflow
+        run: |
+          docker stop mlflow-temp || true
+          docker rm mlflow-temp || true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}, ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
