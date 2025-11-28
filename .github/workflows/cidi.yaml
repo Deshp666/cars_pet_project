@@ -55,7 +55,7 @@ jobs:
       - name: Start temporary MLflow
         run: |
           mkdir -p ${{ github.workspace }}/mlflow_data
-          chmod 777 ${{ github.workspace }}/mlflow_data
+          chmod -R 777 ${{ github.workspace }}/mlflow_data
           docker run -d --name mlflow-temp --network host \
             -v ${{ github.workspace }}/mlflow_data:/mlflow \
             car-price-mlflow
