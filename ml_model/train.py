@@ -109,10 +109,11 @@ def main():
     parser.add_argument("--mlflow-experiment", type=str, default="Car_Price_Prediction_DVC")
 
     args = parser.parse_args()
-    if os.getenv("GITHUB_ACTIONS"):
-        mlflow_uri = "http://host.docker.internal:5000"
-    else:
-        mlflow_uri = "http://127.0.0.1:5000"
+    # if os.getenv("GITHUB_ACTIONS"):
+    #     mlflow_uri = "http://host.docker.internal:5000"
+    # else:
+    #     mlflow_uri = "http://127.0.0.1:5000"
+    mlflow_uri = os.getenv("MLFLOW_TRACKING_URI", "http://host.docker.internal:5000")
 
     if not args.skip_mlflow:
         try:
