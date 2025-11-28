@@ -5,7 +5,7 @@ on:
     branches: [ main ]
 
 env:
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner | lower }}/car-price-api
+  IMAGE_NAME: ghcr.io/${{ github.actor}}/car-price-api
 
 jobs:
   build:
@@ -14,6 +14,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Print GitHub context
+        run: |
+            echo "Repository owner: ${{ github.repository_owner }}"
+            echo "Actor: ${{ github.actor }}"
+            echo "Repository: ${{ github.repository }}"
 
       - name: Build MLflow image
         run: |
