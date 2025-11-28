@@ -7,6 +7,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout code
@@ -17,13 +20,6 @@ jobs:
           echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
         env:
           OWNER: '${{ github.repository_owner }}'
-
-      - name: Print GitHub context
-        run: |
-            echo "Repository owner: ${{ github.repository_owner }}"
-            echo "Actor: ${{ github.actor }}"
-            echo "Repository: ${{ github.repository }}"
-            echo "Owner LC: ${{ env.OWNER_LC }}"
 
       - name: Build MLflow image
         run: |
@@ -71,7 +67,7 @@ jobs:
 
       - name: Pull data and train model
         env:
-            MLFLOW_TRACKING_URI: http://localhost:5000
+          MLFLOW_TRACKING_URI: http://localhost:5000
         run: |
           dvc pull
           python -m ml_model.train --data-path data/cars.csv
@@ -97,3 +93,9 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/${{ env.OWNER_LC }}/car-price-api:${{ github.sha }}, ghcr.io/${{ env.OWNER_LC }}/car-price-api:latest
+
+      - name: Print deployment command
+        run: |
+          echo "✅ Image pushed successfully!"
+          echo "To update Kubernetes deployment, run locally:"
+          echo "kubectl set image deployment/car-price-api api=ghcr.io/${{ env.OWNER_LC }}/car-price-api:${{ github.sha }}"

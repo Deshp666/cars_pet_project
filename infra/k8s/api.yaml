@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: car-price-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: car-price-api
+  template:
+    metadata:
+      labels:
+        app: car-price-api
+    spec:
+      containers:
+      - name: api
+        image: ghcr.io/deshp666/car-price-api:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: MLFLOW_TRACKING_URI
+          value: "http://mlflow-service:5000"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: car-price-api-service
+spec:
+  type: NodePort
+  ports:
+    - port: 8000
+      nodePort: 30080
+      targetPort: 8000
+  selector:
+    app: car-price-api
